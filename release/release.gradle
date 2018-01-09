@@ -1,0 +1,68 @@
+
+apply plugin: 'distribution'
+apply from: rootProject.file( 'gradle/common-bintray-info.gradle' )
+
+
+configurations {
+	bundles {
+		description = 'Configuration used to group the archives output from the distribution plugin.'
+	}
+}
+
+evaluationDependsOn( ':hibernate-core' )
+evaluationDependsOn( ':hibernate-c3p0' )
+
+
+distributions {
+	main {
+		baseName = 'hibernate-release'
+		contents {
+			into('lib/required') {
+				from rootProject.project( 'hibernate-core' ).configurations.provided.files { dep -> dep.name == 'jta' }
+				from rootProject.project( 'hibernate-core' ).configurations.runtime
+				from rootProject.project( 'hibernate-core' ).configurations.archives.allArtifacts.files.filter{ file -> !file.name.endsWith('-sources.jar') }
+				// for now,
+				from rootProject.project( 'hibernate-core' ).configurations.provided.files { dep -> dep.name == 'javassist' }
+			}
+
+			into( 'lib/c3p0' ) {
+				from (
+						( rootProject.project( 'hibernate-c3p0' ).configurations.archives.allArtifacts.files.filter{ file -> !file.name.endsWith('-sources.jar') }
+								+ rootProject.project( 'hibernate-c3p0' ).configurations.runtime )
+								- rootProject.project( 'hibernate-core' ).configurations.runtime
+								- rootProject.project( 'hibernate-core' ).configurations.archives.allArtifacts.files
+				)
+			}
+		}
+	}
+}
+
+distTar {
+	compression = Compression.GZIP
+}
+
+artifacts {
+	bundles distTar
+	bundles distZip
+}
+
+bintray {
+	configurations = ['bundles']
+
+	pkg {
+		repo = 'generic'
+	}
+}
+
+if ( project.isSnapshot ) {
+	tasks.bintrayUpload {
+		enabled = false
+
+		doFirst {
+			throw new GradleException( 'Cannot publish release bundles for SNAPSHOT versions' )
+		}
+	}
+}
+else {
+	task release(dependsOn: bintrayUpload)
+}

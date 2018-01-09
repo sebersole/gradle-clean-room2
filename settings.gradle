@@ -1,0 +1,16 @@
+if ( !JavaVersion.current().java8Compatible ) {
+	throw new GradleException( "Gradle must be run with Java 8 or higher" )
+}
+
+rootProject.name = 'gradle-clean-room2'
+
+include 'hibernate-c3p0'
+include 'hibernate-core'
+include 'release'
+
+rootProject.children.each { project ->
+	project.buildFileName = "${project.name}.gradle"
+	assert project.projectDir.isDirectory()
+	assert project.buildFile.exists()
+	assert project.buildFile.isFile()
+}

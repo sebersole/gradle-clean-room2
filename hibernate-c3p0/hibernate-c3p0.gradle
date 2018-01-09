@@ -1,0 +1,6 @@
+apply from: rootProject.file( 'gradle/published-java-module.gradle' )
+
+dependencies {
+	compile project( ':hibernate-core' )
+	compile( libraries.c3p0 )
+}

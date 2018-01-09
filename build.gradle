@@ -1,0 +1,59 @@
+buildscript {
+    repositories {
+        mavenCentral()
+        jcenter()
+        maven {
+            name "jboss-snapshots"
+            url "http://snapshots.jboss.org/maven2/"
+        }
+    }
+    dependencies {
+        classpath 'org.hibernate.build.gradle:gradle-maven-publish-auth:2.0.1'
+        classpath 'org.hibernate.build.gradle:hibernate-matrix-testing:2.0.0-SNAPSHOT'
+        classpath 'org.hibernate.build.gradle:version-injection-plugin:1.0.0'
+        classpath 'org.hibernate.build.gradle:gradle-xjc-plugin:1.0.2.Final'
+        classpath 'com.github.lburgazzoli:lb-karaf-features-gen:1.0.0-SNAPSHOT'
+        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.7.3'
+    }
+}
+
+plugins {
+    id 'base'
+    id 'com.gradle.build-scan' version '1.9'
+    id 'me.champeau.buildscan-recipes' version '0.1.7'
+}
+
+allprojects {
+    repositories {
+        mavenCentral()
+        maven {
+            name "jboss-snapshots"
+            url "http://snapshots.jboss.org/maven2/"
+        }
+    }
+
+    apply from: rootProject.file( 'gradle/base-information.gradle' )
+}
+
+task release {
+    doFirst {
+        println "Starting version $project.hibernateVersion release"
+    }
+}
+
+subprojects { subproject ->
+    task echoDetails {
+        doLast {
+            println "[$subproject.name] groupId    : $subproject.group"
+            println "[$subproject.name] artifactId : $subproject.name"
+            println "[$subproject.name] version    : $subproject.version"
+        }
+    }
+}
+
+
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '4.4'
+    distributionType = 'ALL'
+}
