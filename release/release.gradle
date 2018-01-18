@@ -1,6 +1,6 @@
 
 apply plugin: 'distribution'
-apply from: rootProject.file( 'gradle/common-bintray-info.gradle' )
+//apply from: rootProject.file( 'gradle/common-bintray-info.gradle' )
 
 
 configurations {
@@ -46,23 +46,23 @@ artifacts {
 	bundles distZip
 }
 
-bintray {
-	configurations = ['bundles']
-
-	pkg {
-		repo = 'generic'
-	}
-}
-
-if ( project.isSnapshot ) {
-	tasks.bintrayUpload {
-		enabled = false
-
-		doFirst {
+//bintray {
+//	configurations = ['bundles']
+//
+//	pkg {
+//		repo = 'generic'
+//	}
+//}
+//
+//task release(dependsOn: bintrayUpload)  {
+task release(dependsOn: project.tasks.assembleDist)  {
+	enabled = !project.isSnapshot
+	doFirst {
+		if ( project.isSnapshot ) {
 			throw new GradleException( 'Cannot publish release bundles for SNAPSHOT versions' )
 		}
+		else {
+			println "Starting bundle release for $project.version"
+		}
 	}
-}
-else {
-	task release(dependsOn: bintrayUpload)
 }

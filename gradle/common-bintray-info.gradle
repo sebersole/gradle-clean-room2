@@ -13,6 +13,8 @@ apply plugin: 'com.jfrog.bintray'
 ext {
 	bintrayUser = project.property( 'PERSONAL_BINTRAY_USER' )
 	bintrayKey = project.property( 'PERSONAL_BINTRAY_API_KEY' )
+
+	bintrayPkgName = 'gradle-clean-room2'
 }
 
 bintray {

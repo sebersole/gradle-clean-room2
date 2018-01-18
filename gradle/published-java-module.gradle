@@ -8,8 +8,7 @@
 apply from: rootProject.file( 'gradle/java-module.gradle' )
 
 apply plugin: 'maven-publish'
-apply plugin: 'com.jfrog.bintray'
-
+//apply from: rootProject.file( 'gradle/common-bintray-info.gradle' )
 apply plugin: 'maven-publish-auth'
 
 task sourcesJar(type: Jar) {
@@ -49,13 +48,13 @@ publishing {
 	}
 }
 
-bintray {
-	publications = ['publishedArtifacts']
-
-	pkg {
-		repo = 'maven'
-	}
-}
+//bintray {
+//	publications = ['publishedArtifacts']
+//
+//	pkg {
+//		repo = 'maven'
+//	}
+//}
 
 model {
 	tasks.generatePomFileForPublishedArtifactsPublication {
@@ -63,33 +62,37 @@ model {
 	}
 }
 
-task generatePomFile( dependsOn: 'generatePomFileForPublishedArtifactsPublication' )
+apply plugin: org.hibernate.build.gradle.pubsign.MavenPublicationSigningPlugin
 
-
-if ( project.isSnapshot ) {
-	task publishSnapshots(dependsOn: publish)
-
-	tasks.bintrayUpload {
-		enabled = false
-		doFirst {
-			throw new PublishException(
-					"Cannot publish SNAPSHOT versions to Bintray (bintrayUpload task was requested)"
-			)
-		}
+task publishSnapshots(dependsOn: publish)
+//task release(dependsOn: bintrayUpload) {
+task release(dependsOn: publish) {
+	doFirst {
+		println "Starting release for $project.name:$project.version"
 	}
 }
-else {
-	task release(dependsOn: bintrayUpload)
-
-	tasks.find { task -> task.name.startsWith( 'publish' ) }.each { task ->
-		task.enabled = false
-		task.doFirst {
-			throw new PublishException(
-					"Cannot publish release (non-SNAPSHOT) versions to JBoss snapshot repository (`$task.name` was requested)"
-			)
-		}
-	}
-}
+//
+//if ( project.isSnapshot ) {
+//	release.enabled = false
+//	tasks.bintrayUpload {
+//		enabled = false
+//		doFirst {
+//			throw new PublishException(
+//					"Cannot publish SNAPSHOT versions to Bintray (bintrayUpload task was requested)"
+//			)
+//		}
+//	}
+//}
+//else {
+//	tasks.find { task -> task.name.startsWith( 'publish' ) }.each { task ->
+//		task.enabled = false
+//		task.doFirst {
+//			throw new PublishException(
+//					"Cannot publish release (non-SNAPSHOT) versions to JBoss snapshot repository (`$task.name` was requested)"
+//			)
+//		}
+//	}
+//}
 
 afterEvaluate {
 
@@ -97,57 +100,54 @@ afterEvaluate {
 
 	PublishingExtension gradlePublishingExtension = project.extensions.getByType( PublishingExtension )
 
-	Set<MavenPublication> mavenPublications = gradlePublishingExtension.publications.withType( MavenPublication )
-	if ( mavenPublications.size() < 0 || mavenPublications.size() > 1 ) {
-		throw new GradleException( "Expecting just a single MavenPublication : " + project.path )
-	}
+	gradlePublishingExtension.publications.withType( MavenPublication ).each { mavenPublication ->
+		project.configure( mavenPublication ) {
+			pom.withXml {
+				asNode().appendNode( 'name', "Hibernate ORM - $mavenPublication.artifactId" )
+				asNode().appendNode( 'description', project.description )
 
-	project.configure( mavenPublications.first() ) {
-		pom.withXml {
-			asNode().appendNode( 'name', "Hibernate ORM - $project.name" )
-			asNode().appendNode( 'description', project.description )
+				Node licensesNode = asNode().appendNode( "licenses" )
 
-			Node licensesNode = asNode().appendNode( "licenses" )
+				Node lgplLicenseNode = licensesNode.appendNode( "license" )
+				lgplLicenseNode.appendNode( 'name', 'GNU Lesser General Public License' )
+				lgplLicenseNode.appendNode( 'url', 'http://www.gnu.org/licenses/lgpl-2.1.html' )
+				lgplLicenseNode.appendNode(
+						'comments',
+						'See discussion at http://hibernate.org/license for more details.'
+				)
+				lgplLicenseNode.appendNode( 'distribution', 'repo' )
 
-			Node lgplLicenseNode = licensesNode.appendNode( "license" )
-			lgplLicenseNode.appendNode( 'name', 'GNU Lesser General Public License' )
-			lgplLicenseNode.appendNode( 'url', 'http://www.gnu.org/licenses/lgpl-2.1.html' )
-			lgplLicenseNode.appendNode(
-					'comments',
-					'See discussion at http://hibernate.org/license for more details.'
-			)
-			lgplLicenseNode.appendNode( 'distribution', 'repo' )
-
-			asNode().children().last() + {
-				url 'http://hibernate.org'
-				organization {
-					name 'Hibernate.org'
+				asNode().children().last() + {
 					url 'http://hibernate.org'
-				}
-				issueManagement {
-					system 'jira'
-					url 'https://hibernate.atlassian.net/browse/HHH'
-				}
-				scm {
-					url 'http://github.com/hibernate/hibernate-orm'
-					connection 'scm:git:http://github.com/hibernate/hibernate-orm.git'
-					developerConnection 'scm:git:git@github.com:hibernate/hibernate-orm.git'
-				}
-				developers {
-					developer {
-						id 'hibernate-team'
-						name 'The Hibernate Development Team'
-						organization 'Hibernate.org'
-						organizationUrl 'http://hibernate.org'
+					organization {
+						name 'Hibernate.org'
+						url 'http://hibernate.org'
+					}
+					issueManagement {
+						system 'jira'
+						url 'https://hibernate.atlassian.net/browse/HHH'
+					}
+					scm {
+						url 'http://github.com/hibernate/hibernate-orm'
+						connection 'scm:git:http://github.com/hibernate/hibernate-orm.git'
+						developerConnection 'scm:git:git@github.com:hibernate/hibernate-orm.git'
+					}
+					developers {
+						developer {
+							id 'hibernate-team'
+							name 'The Hibernate Development Team'
+							organization 'Hibernate.org'
+							organizationUrl 'http://hibernate.org'
+						}
 					}
 				}
-			}
 
-			// TEMPORARY : currently Gradle Publishing feature is exporting dependencies as 'runtime' scope,
-			//      rather than 'compile'; fix that.
-			if ( asNode().dependencies != null && asNode().dependencies.size() > 0 ) {
-				asNode().dependencies[0].dependency.each {
-					it.scope[0].value = 'compile'
+				// TEMPORARY : currently Gradle Publishing feature is exporting dependencies as 'runtime' scope,
+				//      rather than 'compile'; fix that.
+				if ( asNode().dependencies != null && asNode().dependencies.size() > 0 ) {
+					asNode().dependencies[0].dependency.each {
+						it.scope[0].value = 'compile'
+					}
 				}
 			}
 		}

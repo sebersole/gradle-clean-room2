@@ -21,7 +21,7 @@ apply plugin: 'project-report'
 
 ext {
 	java9ModuleNameBase = project.name.startsWith( 'hibernate-' ) ? name.drop( 'hibernate-'.length() ): name
-	java9ModuleName = "org.hibernate.orm.$java9ModuleNameBase"
+	java9ModuleName = "org.hibernate.orm.$project.java9ModuleNameBase"
 }
 
 
@@ -36,7 +36,7 @@ afterEvaluate {
 
 echoDetails {
 	doLast {
-		println "[$project.name] Java 9 module name : $java9ModuleName"
+		println "[$project.name] Java 9 module name : $project.java9ModuleName"
 	}
 }
 
@@ -156,8 +156,8 @@ tasks.withType( Test.class ).all { task ->
 	task.systemProperties += System.properties.findAll { it.key.startsWith( "hibernate." ) }
 }
 
-processTestResources {
-	doLast {
+project.afterEvaluate {
+	processTestResources.doLast {
 		copy {
 			from( sourceSets.test.java.srcDirs ) {
 				include '**/*.properties'
